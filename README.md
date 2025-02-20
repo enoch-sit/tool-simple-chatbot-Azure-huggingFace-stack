@@ -234,7 +234,7 @@ def run_agent(query: str, user_input: str = None):
 ### Explanation of Changes
 
 - **Azure OpenAI**:
-  - Uses `AzureChatOpenAI` instead of `ChatOpenAI`. Requires endpoint, API key, and deployment name from Azure. Check Azure’s model availability for `gpt-35-turbo` or similar.
+  - Uses `AzureChatOpenAI`. Requires endpoint, API key, and deployment name from Azure. Check Azure’s model availability for `gpt-35-turbo` or similar.
   - Response format remains compatible with LangChain’s `invoke` method.
 - **Hugging Face Embeddings**:
   - Uses `sentence-transformers/all-MiniLM-L6-v2`, a lightweight model producing 384-dimensional embeddings (faster than OpenAI’s 1536-dim).
