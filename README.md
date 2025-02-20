@@ -44,7 +44,7 @@ The key change is swapping local Hugging Face embeddings for the Inference API, 
 Remove `transformers` and `torch`, as we no longer need them for local embeddings:
 
 ```bash
-pip install fastapi uvicorn langchain langgraph azure-ai-openai pinecone-client sqlite3 requests beautifulsoup4 serpapi streamlit python-jwt
+pip install fastapi uvicorn langchain langgraph pinecone-client sqlite3 requests beautifulsoup4 serpapi streamlit python-jwt
 ```
 
 - **Notes**:
@@ -53,7 +53,7 @@ pip install fastapi uvicorn langchain langgraph azure-ai-openai pinecone-client 
 
 #### Step 3: Project Structure (Unchanged)
 
-```
+```text
 chatbot_project/
 ├── backend/
 │   ├── main.py
