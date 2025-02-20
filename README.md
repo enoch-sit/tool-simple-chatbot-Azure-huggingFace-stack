@@ -2,23 +2,23 @@
 
 ## Overview
 
-Below is an updated version of the step-by-step guide, replacing OpenAI's API and embeddings with Azure OpenAI API and Hugging Face embeddings. I'll adjust the frameworks, installation process, and code accordingly, focusing on the backend and frontend changes. The rest of the stack (FastAPI, LangChain, LangGraph, Pinecone, SQLite, etc.) remains largely unchanged, but I'll highlight modifications where needed.
+This guide replace local Hugging Face embeddings with the Hugging Face Inference API. This eliminates the need to run the embedding model locally (e.g., with `transformers` and `torch`), reducing resource demands and simplifying deployment. Below, I’ll update the guide to use the Hugging Face Inference API for embeddings while keeping Azure OpenAI for the language model. I’ll adjust the installation, environment variables, and code accordingly.
 
 ---
 
 ### Updated Tech Stack Overview
 
 - **Backend Framework**: FastAPI (unchanged).
-- **RAG Framework**: LangChain (unchanged, supports Azure OpenAI).
+- **RAG Framework**: LangChain (unchanged).
 - **HITL Framework**: LangGraph (unchanged).
-- **Language Model**: Azure OpenAI API (replaces OpenAI API).
-- **Embeddings**: Hugging Face Transformers (replaces OpenAI embeddings).
+- **Language Model**: Azure OpenAI API (unchanged).
+- **Embeddings**: Hugging Face Inference API (replaces local `transformers`).
 - **Vector Database**: Pinecone (unchanged).
 - **User/Feedback Storage**: SQLite (unchanged).
 - **Web Features**: `requests` and `BeautifulSoup` (unchanged), SerpAPI (unchanged).
 - **Frontend**: Streamlit (unchanged).
 
-Key changes involve swapping OpenAI’s API for Azure OpenAI and using Hugging Face’s `transformers` library for embeddings, integrating them with LangChain and Pinecone.
+The key change is swapping local Hugging Face embeddings for the Inference API, which requires an API key and an HTTP client (`requests`).
 
 ---
 
@@ -28,7 +28,8 @@ Key changes involve swapping OpenAI’s API for Azure OpenAI and using Hugging F
 
 - **Python**: 3.10+ installed.
 - **API Keys**:
-  - Azure OpenAI: Get endpoint, API key, and deployment name from [Azure Portal](https://portal.azure.com/). You’ll need an Azure subscription and a deployed model (e.g., `gpt-35-turbo`).
+  - Azure OpenAI: Endpoint, API key, and deployment name from [Azure Portal](https://portal.azure.com/).
+  - Hugging Face Inference API: API token from [Hugging Face](https://huggingface.co/settings/tokens).
   - Pinecone: [Pinecone Console](https://www.pinecone.io/).
   - SerpAPI: [SerpAPI](https://serpapi.com/).
 - **Environment**: Set up a virtual environment:
@@ -40,17 +41,15 @@ Key changes involve swapping OpenAI’s API for Azure OpenAI and using Hugging F
 
 #### Step 2: Install Dependencies
 
-Update the installation command to include Azure OpenAI and Hugging Face:
+Remove `transformers` and `torch`, as we no longer need them for local embeddings:
 
 ```bash
-pip install fastapi uvicorn langchain langgraph azure-ai-openai transformers pinecone-client sqlite3 requests beautifulsoup4 serpapi streamlit python-jwt torch
+pip install fastapi uvicorn langchain langgraph azure-ai-openai pinecone-client sqlite3 requests beautifulsoup4 serpapi streamlit python-jwt
 ```
 
-- **Additions**:
-  - `azure-ai-openai`: For Azure OpenAI integration.
-  - `transformers`: For Hugging Face embeddings.
-  - `torch`: Required by `transformers` for model inference.
-- **Notes**: Ensure `pydantic` is installed (usually comes with FastAPI).
+- **Notes**:
+  - `requests` is already included for web features and will be reused for the Inference API.
+  - No need for `torch` since embeddings are offloaded to the API.
 
 #### Step 3: Project Structure (Unchanged)
 
@@ -68,23 +67,26 @@ chatbot_project/
 
 #### Step 4: Update Environment Variables (`.env`)
 
+Add the Hugging Face API key:
+
 ```bash
 AZURE_OPENAI_API_KEY=your_azure_openai_key
 AZURE_OPENAI_ENDPOINT=your_azure_endpoint  # e.g., https://your-resource.azure.com/
 AZURE_OPENAI_DEPLOYMENT=your_deployment_name  # e.g., gpt-35-turbo
+HF_API_KEY=your_huggingface_api_key
 PINECONE_API_KEY=your_pinecone_key
 PINECONE_ENVIRONMENT=your_pinecone_env  # e.g., "us-west1-gcp"
 SERPAPI_API_KEY=your_serpapi_key
 SECRET_KEY=your_secret_key_for_jwt
 ```
 
-Install `python-dotenv` (`pip install python-dotenv`) if not already done.
+Ensure `python-dotenv` is installed (`pip install python-dotenv`).
 
 #### Step 5: Backend Setup (Updated)
 
 ##### 5.1: SQLite Database (`backend/database.py`)
 
-- **Unchanged**: No changes needed here as it’s independent of the LLM/embeddings.
+- **Unchanged**: No changes needed.
 
 ##### 5.2: RAG + HITL Agent (`backend/rag_agent.py`)
 
@@ -93,10 +95,9 @@ from langchain_openai import AzureChatOpenAI
 from langchain_pinecone import PineconeVectorStore
 from langchain.prompts import PromptTemplate
 from langgraph.graph import StateGraph, END
-from transformers import AutoTokenizer, AutoModel
 from typing import TypedDict, Optional
 from pinecone import Pinecone
-import torch
+import requests
 import os
 from dotenv import load_dotenv
 
@@ -110,31 +111,34 @@ llm = AzureChatOpenAI(
     api_version="2023-05-15"  # Check Azure docs for latest version
 )
 
-# Hugging Face Embeddings
-model_name = "sentence-transformers/all-MiniLM-L6-v2"  # Fast, 384-dimensional embeddings
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModel.from_pretrained(model_name)
+# Hugging Face Inference API Embeddings
+HF_API_URL = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2"
+HF_API_KEY = os.getenv("HF_API_KEY")
 
-def huggingface_embeddings(texts):
-    inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True)
-    with torch.no_grad():
-        outputs = model(**inputs)
-    embeddings = outputs.last_hidden_state.mean(dim=1).numpy()
-    return embeddings
+def huggingface_inference_embeddings(texts):
+    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+    payload = {"inputs": texts}
+    response = requests.post(HF_API_URL, headers=headers, json=payload)
+    if response.status_code != 200:
+        raise Exception(f"HF API error: {response.text}")
+    embeddings = response.json()
+    if isinstance(embeddings, list) and len(embeddings) > 0 and isinstance(embeddings[0], list):
+        return embeddings
+    raise Exception("Unexpected HF API response format")
 
-class HuggingFaceEmbeddings:
+class HuggingFaceInferenceEmbeddings:
     def embed_documents(self, texts):
-        return huggingface_embeddings(texts).tolist()
+        return huggingface_inference_embeddings(texts)
     def embed_query(self, text):
-        return huggingface_embeddings([text])[0].tolist()
+        return huggingface_inference_embeddings([text])[0]
 
-embeddings = HuggingFaceEmbeddings()
+embeddings = HuggingFaceInferenceEmbeddings()
 
 # Initialize Pinecone
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
 index_name = "chatbot-index"
 if index_name not in pc.list_indexes().names():
-    pc.create_index(name=index_name, dimension=384, metric="cosine")  # 384 matches MiniLM
+    pc.create_index(name=index_name, dimension=384, metric="cosine")  # 384 for MiniLM
 vector_store = PineconeVectorStore(index_name=index_name, embedding=embeddings)
 
 # Sample data for RAG
@@ -187,17 +191,18 @@ def run_agent(query: str, user_input: str = None):
 
 **Key Changes**:
 
-- Replaced `langchain_openai.OpenAIEmbeddings` with a custom `HuggingFaceEmbeddings` class using `sentence-transformers/all-MiniLM-L6-v2`.
-- Swapped `ChatOpenAI` for `AzureChatOpenAI` with Azure-specific credentials.
-- Adjusted Pinecone dimension to 384 (MiniLM’s output size vs. OpenAI’s 1536).
+- Replaced local `transformers` with a `HuggingFaceInferenceEmbeddings` class that calls the Hugging Face Inference API (`sentence-transformers/all-MiniLM-L6-v2`).
+- Used `requests` to send text to the API and retrieve 384-dimensional embeddings.
+- Removed `torch` and `AutoTokenizer`/`AutoModel` dependencies.
+- Error handling added for API failures or unexpected responses.
 
 ##### 5.3: FastAPI Backend (`backend/main.py`)
 
-- **Unchanged**: The FastAPI endpoints don’t directly depend on the LLM/embeddings, so this file remains the same unless you need to tweak response handling.
+- **Unchanged**: The endpoints remain the same, as they don’t directly interact with the embedding logic.
 
 #### Step 6: Frontend Setup (`frontend/app.py`)
 
-- **Unchanged**: The frontend interacts with the backend via APIs, so no changes are needed here. It still works with the updated `rag_agent.py`.
+- **Unchanged**: The frontend interacts via APIs, so no modifications are needed.
 
 #### Step 7: Run the Application
 
@@ -220,32 +225,31 @@ def run_agent(query: str, user_input: str = None):
 #### Step 8: Test the Features
 
 - **Login**: `testuser`/`testpass`.
-- **Query**: “What’s new in AI?”—uses Hugging Face embeddings for RAG and Azure OpenAI for generation.
+- **Query**: “What’s new in AI?”—uses HF Inference API for embeddings and Azure OpenAI for generation.
 - **Feedback**: Rate responses as before.
-- **Web Search/Get**: Unchanged, still uses SerpAPI and `requests`.
+- **Web Search/Get**: Unchanged, uses SerpAPI and `requests`.
 
 #### Step 9: Deployment Notes
 
 - **Local**: Works as-is.
-- **Cloud**: Ensure Azure credentials are secure in environment variables. Hugging Face models run locally, so consider memory/CPU needs for deployment (e.g., use a GPU instance if scaling).
+- **Cloud**: Secure all API keys (Azure, HF, Pinecone, SerpAPI) in environment variables. No local model hosting means lower memory/CPU requirements.
 
 ---
 
 ### Explanation of Changes
 
-- **Azure OpenAI**:
-  - Uses `AzureChatOpenAI`. Requires endpoint, API key, and deployment name from Azure. Check Azure’s model availability for `gpt-35-turbo` or similar.
-  - Response format remains compatible with LangChain’s `invoke` method.
-- **Hugging Face Embeddings**:
-  - Uses `sentence-transformers/all-MiniLM-L6-v2`, a lightweight model producing 384-dimensional embeddings (faster than OpenAI’s 1536-dim).
-  - Custom `HuggingFaceEmbeddings` class adapts to LangChain’s embedding interface.
-  - Runs locally via `transformers`, requiring `torch` for inference.
-- **Pinecone**: Dimension adjusted to 384 to match MiniLM embeddings. If reusing an existing index, delete and recreate it with the new dimension.
+- **Hugging Face Inference API**:
+  - Uses `sentence-transformers/all-MiniLM-L6-v2` via the API endpoint (`https://api-inference.huggingface.co/models/...`).
+  - `huggingface_inference_embeddings` sends text to the API and returns embeddings (384 dimensions).
+  - Requires an API key from Hugging Face, passed in the `Authorization` header.
+  - The custom `HuggingFaceInferenceEmbeddings` class adapts the API output to LangChain’s embedding interface.
+- **Dependencies**: Removed `transformers` and `torch`, relying on `requests` (already present) for API calls.
+- **Pinecone**: Dimension remains 384, consistent with MiniLM embeddings.
 
 ### Notes
 
-- **Performance**: Hugging Face embeddings are computed locally, which may be slower than OpenAI’s API but avoids additional costs. Optimize by batching or using a GPU.
-- **Azure Setup**: Ensure your Azure deployment matches the model specified (e.g., `gpt-35-turbo`). Check API version compatibility in Azure docs.
-- **Scalability**: For production, consider hosting the Hugging Face model on a dedicated inference server (e.g., via Hugging Face Inference API) instead of local computation.
+- **Performance**: The Inference API offloads computation to Hugging Face’s servers, reducing local resource use but introducing latency from HTTP requests. Free tier has rate limits; consider a paid plan for production.
+- **Error Handling**: The code checks for API errors and response format. If the API returns unexpected data, it raises an exception—log these in production.
+- **Cost**: Azure OpenAI and HF Inference API incur usage costs. Monitor quotas via Azure and Hugging Face dashboards.
 
-This updated stack maintains all features—authentication, RAG, HITL, feedback, and web capabilities—while swapping OpenAI for Azure OpenAI and Hugging Face embeddings, fully functional with the provided code!
+This setup maintains all features—authentication, RAG, HITL, feedback, and web capabilities—using Azure OpenAI for generation and Hugging Face Inference API for embeddings, fully functional with the updated code!
