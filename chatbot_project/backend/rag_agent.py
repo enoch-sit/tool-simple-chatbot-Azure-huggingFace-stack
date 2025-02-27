@@ -12,12 +12,14 @@ load_dotenv()
 
 # Custom Grok LLM for LangChain
 class GrokLLM(LLM):
-    api_key: str
-    api_url: str = "https://api.x.ai/v1/chat/completions"  # Hypothetical endpoint; adjust based on xAI docs
+    api_key: Optional[str] = None
+    api_url: str = "https://api.x.ai/v1/chat/completions"
 
-    def __init__(self, api_key: str):
-        super().__init__()
+    def __init__(self, api_key: Optional[str] = None):
+        super().__init__(api_key=api_key)  # Pass parameters to super().__init__
         self.api_key = api_key
+        print("This is your api_key:")
+        print(api_key)
 
     def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
         headers = {

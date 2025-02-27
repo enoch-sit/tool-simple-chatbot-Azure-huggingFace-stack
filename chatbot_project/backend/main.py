@@ -4,8 +4,8 @@ from typing import Optional
 import jwt
 from dotenv import load_dotenv
 import os
-from backend.database import authenticate_user, save_feedback
-from backend.rag_agent import run_agent
+from database import authenticate_user, save_feedback
+from rag_agent import run_agent
 import requests
 from bs4 import BeautifulSoup
 
