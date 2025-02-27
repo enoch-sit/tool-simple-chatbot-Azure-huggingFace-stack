@@ -1,0 +1,682 @@
+
+===================================================
+FILE: C:\Users\user\Documents\ThankGodForJesusChrist\ThankGodForTools\tool-simple-chatbot-Azure-huggingFace-stack\.gitignore
+===================================================
+# Ignore virtual environment directory
+venv/
+.venv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pyre/
+.pytype/
+.mypy_cache/
+.pyre/
+.dmypy.json
+dmypy.json
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+#   For a library or package, you might want to ignore these files since the code is copy / pasteable.
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.envrc
+venv/
+ENV/
+.env/
+venv/
+ENV/
+
+# Anaconda
+*.conda
+*.ipynb_checkpoints
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Poetry
+.poetry/
+
+===================================================
+FILE: C:\Users\user\Documents\ThankGodForJesusChrist\ThankGodForTools\tool-simple-chatbot-Azure-huggingFace-stack\flatten.ps1
+===================================================
+# Define paths
+$sourceFolder = "." # Current directory, change as needed
+$outputFile = "combined_files.txt"
+$gitignoreFile = "$sourceFolder\.gitignore"
+
+# Function to check if a path matches any pattern in .gitignore
+function Test-GitignoreMatch {
+    param (
+        [string]$Path,
+        [string[]]$IgnorePatterns
+    )
+
+    $relativePath = $Path.Replace("$sourceFolder\", "").Replace("\", "/")
+    
+    foreach ($pattern in $IgnorePatterns) {
+        # Skip empty lines and comments
+        if ([string]::IsNullOrWhiteSpace($pattern) -or $pattern.StartsWith("#")) {
+            continue
+        }
+        
+        # Remove leading/trailing whitespace
+        $pattern = $pattern.Trim()
+        
+        # Handle negation patterns (not supported in this simple implementation)
+        if ($pattern.StartsWith("!")) {
+            continue
+        }
+        
+        # Handle directory-specific patterns
+        $dirPattern = $pattern.EndsWith("/")
+        if ($dirPattern) {
+            $pattern = $pattern.TrimEnd("/")
+        }
+        
+        # Convert .gitignore pattern to regex
+        $regex = $pattern.Replace(".", "\.").Replace("*", ".*").Replace("?", ".") + $(if ($dirPattern) { "(/.*|)$" } else { "$" })
+        
+        if ($relativePath -match $regex) {
+            return $true
+        }
+    }
+    
+    return $false
+}
+
+# Read .gitignore file
+$ignorePatterns = @()
+if (Test-Path $gitignoreFile) {
+    $ignorePatterns = Get-Content $gitignoreFile
+}
+
+# Add the output file itself to ignored patterns
+$ignorePatterns += $outputFile
+
+# Create or clear the output file
+"" | Set-Content $outputFile
+
+# Process all files
+Get-ChildItem -Path $sourceFolder -Recurse -File | ForEach-Object {
+    # Check if file should be ignored
+    if (-not (Test-GitignoreMatch -Path $_.FullName -IgnorePatterns $ignorePatterns)) {
+        # Add file path and name as header
+        "===================================================" | Add-Content $outputFile
+        "FILE: $($_.FullName)" | Add-Content $outputFile
+        "===================================================" | Add-Content $outputFile
+        
+        # Add file content
+        Get-Content $_.FullName | Add-Content $outputFile
+        
+        # Add empty line for separation
+        "" | Add-Content $outputFile
+    }
+}
+
+Write-Host "All files have been combined into $outputFile"
+
+===================================================
+FILE: C:\Users\user\Documents\ThankGodForJesusChrist\ThankGodForTools\tool-simple-chatbot-Azure-huggingFace-stack\initFiles.ps1
+===================================================
+# Define the directory structure
+$directories = @(
+    "chatbot_project",
+    "chatbot_project/backend",
+    "chatbot_project/backend/main.py",
+    "chatbot_project/backend/database.py",
+    "chatbot_project/backend/rag_agent.py",
+    "chatbot_project/frontend",
+    "chatbot_project/frontend/app.py",
+    "chatbot_project/.env"
+    #,
+    #"chatbot_project/requirements.txt"
+)
+
+# Create the directories and files
+foreach ($dir in $directories) {
+    $path = [System.IO.Path]::GetFullPath($dir)
+    if (-not (Test-Path $path)) {
+        if ($dir -match "\.\w+$") {
+            # Create file
+            New-Item -ItemType File -Path $path
+        } else {
+            # Create directory
+            New-Item -ItemType Directory -Path $path
+        }
+    }
+}
+
+===================================================
+FILE: C:\Users\user\Documents\ThankGodForJesusChrist\ThankGodForTools\tool-simple-chatbot-Azure-huggingFace-stack\requirment.txt
+===================================================
+aiohappyeyeballs==2.4.6
+aiohttp==3.10.11
+aiosignal==1.3.2
+altair==5.5.0
+annotated-types==0.7.0
+anyio==4.8.0
+attrs==25.1.0
+beautifulsoup4==4.13.3
+blinker==1.9.0
+cachetools==5.5.2
+certifi==2025.1.31
+cffi==1.17.1
+charset-normalizer==3.4.1
+click==8.1.8
+colorama==0.4.6
+cryptography==44.0.1
+dotenv==0.9.9
+fastapi==0.115.8
+frozenlist==1.5.0
+gitdb==4.0.12
+GitPython==3.1.44
+greenlet==3.1.1
+h11==0.14.0
+httpcore==1.0.7
+httpx==0.28.1
+idna==3.10
+iniconfig==2.0.0
+Jinja2==3.1.5
+jsonpatch==1.33
+jsonpointer==3.0.0
+jsonschema==4.23.0
+jsonschema-specifications==2024.10.1
+jwcrypto==1.5.6
+langchain==0.3.19
+langchain-core==0.3.37
+langchain-pinecone==0.2.3
+langchain-tests==0.3.12
+langchain-text-splitters==0.3.6
+langgraph==0.2.74
+langgraph-checkpoint==2.0.16
+langgraph-sdk==0.1.53
+langsmith==0.3.9
+markdown-it-py==3.0.0
+MarkupSafe==3.0.2
+mdurl==0.1.2
+msgpack==1.1.0
+multidict==6.1.0
+narwhals==1.27.1
+numpy==1.26.4
+orjson==3.10.15
+packaging==24.2
+pandas==2.2.3
+pillow==11.1.0
+pinecone==5.4.2
+pinecone-client==5.0.1
+pinecone-plugin-inference==3.1.0
+pinecone-plugin-interface==0.0.7
+pluggy==1.5.0
+propcache==0.3.0
+protobuf==5.29.3
+pyarrow==19.0.1
+pycparser==2.22
+pydantic==2.10.6
+pydantic_core==2.27.2
+pydeck==0.9.1
+Pygments==2.19.1
+pytest==8.3.4
+pytest-asyncio==0.25.3
+pytest-socket==0.7.0
+python-dateutil==2.9.0.post0
+python-dotenv==1.0.1
+python-jwt==4.1.0
+pytz==2025.1
+PyYAML==6.0.2
+referencing==0.36.2
+requests==2.32.3
+requests-toolbelt==1.0.0
+rich==13.9.4
+rpds-py==0.23.0
+six==1.17.0
+smmap==5.0.2
+sniffio==1.3.1
+soupsieve==2.6
+SQLAlchemy==2.0.38
+starlette==0.45.3
+streamlit==1.42.2
+syrupy==4.8.2
+tenacity==9.0.0
+toml==0.10.2
+tornado==6.4.2
+tqdm==4.67.1
+typing_extensions==4.12.2
+tzdata==2025.1
+urllib3==2.3.0
+uvicorn==0.34.0
+watchdog==6.0.0
+yarl==1.18.3
+zstandard==0.23.0
+
+===================================================
+FILE: C:\Users\user\Documents\ThankGodForJesusChrist\ThankGodForTools\tool-simple-chatbot-Azure-huggingFace-stack\chatbot_project\.env.example
+===================================================
+AZURE_OPENAI_API_KEY=
+AZURE_OPENAI_ENDPOINT=
+AZURE_OPENAI_DEPLOYMENT=
+HF_API_KEY=
+PINECONE_API_KEY=
+PINECONE_ENVIRONMENT=
+SERPAPI_API_KEY=
+SECRET_KEY=
+
+===================================================
+FILE: C:\Users\user\Documents\ThankGodForJesusChrist\ThankGodForTools\tool-simple-chatbot-Azure-huggingFace-stack\chatbot_project\backend\database.py
+===================================================
+import sqlite3
+
+def init_db():
+    conn = sqlite3.connect("users.db")
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS users 
+                 (username TEXT PRIMARY KEY, password TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS feedback 
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, response TEXT, rating INTEGER)''')
+    # Sample user
+    c.execute("INSERT OR IGNORE INTO users VALUES (?, ?)", ("testuser", "testpass"))
+    conn.commit()
+    conn.close()
+
+def authenticate_user(username: str, password: str) -> bool:
+    conn = sqlite3.connect("users.db")
+    c = conn.cursor()
+    c.execute("SELECT password FROM users WHERE username = ?", (username,))
+    result = c.fetchone()
+    conn.close()
+    return result and result[0] == password
+
+def save_feedback(username: str, response: str, rating: int):
+    conn = sqlite3.connect("users.db")
+    c = conn.cursor()
+    c.execute("INSERT INTO feedback (username, response, rating) VALUES (?, ?, ?)", 
+              (username, response, rating))
+    conn.commit()
+    conn.close()
+
+if __name__ == "__main__":
+    init_db()
+
+===================================================
+FILE: C:\Users\user\Documents\ThankGodForJesusChrist\ThankGodForTools\tool-simple-chatbot-Azure-huggingFace-stack\chatbot_project\backend\main.py
+===================================================
+from fastapi import FastAPI, HTTPException, Depends
+from pydantic import BaseModel
+from typing import Optional
+import jwt
+from dotenv import load_dotenv
+import os
+from database import authenticate_user, save_feedback
+from rag_agent import run_agent
+import requests
+from bs4 import BeautifulSoup
+
+load_dotenv()
+app = FastAPI()
+SECRET_KEY = os.getenv("SECRET_KEY")
+SERPAPI_KEY = os.getenv("SERPAPI_API_KEY")
+
+class User(BaseModel):
+    username: str
+    password: str
+
+class Feedback(BaseModel):
+    response: str
+    rating: int
+
+class Query(BaseModel):
+    query: str
+    user_input: Optional[str] = None
+
+def get_current_user(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        username = payload.get("sub")
+        if not username:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return username
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+@app.post("/login")
+async def login(user: User):
+    if authenticate_user(user.username, user.password):
+        token = jwt.encode({"sub": user.username}, SECRET_KEY, algorithm="HS256")
+        return {"access_token": token}
+    raise HTTPException(status_code=401, detail="Invalid credentials")
+
+@app.post("/query")
+async def query(query: Query, token: str = Depends(get_current_user)):
+    result = run_agent(query.query, query.user_input)
+    if "response" not in result:  # Paused for human input
+        return {"status": "paused", "retrieved_docs": result["retrieved_docs"]}
+    return {"response": result["response"]}
+
+@app.post("/feedback")
+async def feedback(feedback: Feedback, token: str = Depends(get_current_user)):
+    save_feedback(token, feedback.response, feedback.rating)
+    return {"status": "feedback saved"}
+
+@app.get("/web_search")
+async def web_search(query: str, token: str = Depends(get_current_user)):
+    url = f"https://serpapi.com/search?api_key={SERPAPI_KEY}&q={query}"
+    response = requests.get(url)
+    return response.json()
+
+@app.get("/web_get")
+async def web_get(url: str, token: str = Depends(get_current_user)):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, "html.parser")
+    return {"content": soup.get_text()[:500]}  # Limited for brevity
+
+===================================================
+FILE: C:\Users\user\Documents\ThankGodForJesusChrist\ThankGodForTools\tool-simple-chatbot-Azure-huggingFace-stack\chatbot_project\backend\rag_agent.py
+===================================================
+from langchain_pinecone import PineconeVectorStore
+from langchain.prompts import PromptTemplate
+from langchain.llms.base import LLM
+from langgraph.graph import StateGraph, END
+from typing import TypedDict, Optional, List
+from pinecone import Pinecone
+import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Custom Grok LLM for LangChain
+class GrokLLM(LLM):
+    api_key: str
+    api_url: str = "https://api.x.ai/v1/chat/completions"  # Hypothetical endpoint; adjust based on xAI docs
+
+    def __init__(self, api_key: str):
+        super().__init__()
+        self.api_key = api_key
+
+    def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": "grok",  # Adjust based on actual Grok model name
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 500
+        }
+        response = requests.post(self.api_url, headers=headers, json=payload)
+        if response.status_code != 200:
+            raise Exception(f"Grok API error: {response.text}")
+        data = response.json()
+        return data["choices"][0]["message"]["content"]
+
+    @property
+    def _llm_type(self) -> str:
+        return "grok"
+
+# Initialize Grok LLM
+llm = GrokLLM(api_key=os.getenv("GROK_API_KEY"))
+
+# Hugging Face Inference API Embeddings
+HF_API_URL = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2"
+HF_API_KEY = os.getenv("HF_API_KEY")
+
+def huggingface_inference_embeddings(texts):
+    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+    payload = {"inputs": texts}
+    response = requests.post(HF_API_URL, headers=headers, json=payload)
+    if response.status_code != 200:
+        raise Exception(f"HF API error: {response.text}")
+    embeddings = response.json()
+    if isinstance(embeddings, list) and len(embeddings) > 0 and isinstance(embeddings[0], list):
+        return embeddings
+    raise Exception("Unexpected HF API response format")
+
+class HuggingFaceInferenceEmbeddings:
+    def embed_documents(self, texts):
+        return huggingface_inference_embeddings(texts)
+    def embed_query(self, text):
+        return huggingface_inference_embeddings([text])[0]
+
+embeddings = HuggingFaceInferenceEmbeddings()
+
+# Initialize Pinecone
+pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+index_name = "chatbot-index"
+if index_name not in pc.list_indexes().names():
+    pc.create_index(name=index_name, dimension=384, metric="cosine")  # 384 for MiniLM
+vector_store = PineconeVectorStore(index_name=index_name, embedding=embeddings)
+
+# Sample data for RAG
+documents = ["AI is advancing rapidly in 2025.", "Web search APIs are useful."]
+vector_store.add_texts(documents)
+
+# Define State for LangGraph
+class AgentState(TypedDict):
+    query: str
+    retrieved_docs: list
+    user_input: Optional[str]
+    response: Optional[str]
+
+# Nodes for LangGraph
+def retrieve(state: AgentState) -> AgentState:
+    docs = vector_store.similarity_search(state["query"], k=2)
+    state["retrieved_docs"] = [doc.page_content for doc in docs]
+    return state
+
+def human_input(state: AgentState) -> AgentState:
+    return state
+
+def generate(state: AgentState) -> AgentState:
+    prompt = PromptTemplate(
+        input_variables=["query", "docs", "user_input"],
+        template="Query: {query}\nDocs: {docs}\nHuman Input: {user_input}\nAnswer:"
+    )
+    response = llm(prompt.format(query=state["query"], 
+                                 docs="\n".join(state["retrieved_docs"]), 
+                                 user_input=state["user_input"] or "None"))
+    state["response"] = response
+    return state
+
+# Build the graph
+workflow = StateGraph(AgentState)
+workflow.add_node("retrieve", retrieve)
+workflow.add_node("human_input", human_input)
+workflow.add_node("generate", generate)
+workflow.add_edge("retrieve", "human_input")
+workflow.add_edge("human_input", "generate")
+workflow.add_edge("generate", END)
+workflow.set_entry_point("retrieve")
+app = workflow.compile(interrupt_before=["human_input"])
+
+def run_agent(query: str, user_input: str = None):
+    state = {"query": query, "retrieved_docs": [], "user_input": user_input}
+    result = app.invoke(state)
+    return result
+
+===================================================
+FILE: C:\Users\user\Documents\ThankGodForJesusChrist\ThankGodForTools\tool-simple-chatbot-Azure-huggingFace-stack\chatbot_project\frontend\app.py
+===================================================
+import streamlit as st
+import requests
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+API_URL = "http://localhost:8000"
+
+def login(username, password):
+    response = requests.post(f"{API_URL}/login", json={"username": username, "password": password})
+    if response.status_code == 200:
+        return response.json()["access_token"]
+    return None
+
+def query(token, query_text, user_input=None):
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.post(f"{API_URL}/query", json={"query": query_text, "user_input": user_input}, headers=headers)
+    return response.json()
+
+def feedback(token, response, rating):
+    headers = {"Authorization": f"Bearer {token}"}
+    requests.post(f"{API_URL}/feedback", json={"response": response, "rating": rating}, headers=headers)
+
+def web_search(token, query):
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get(f"{API_URL}/web_search", params={"query": query}, headers=headers)
+    return response.json()
+
+def web_get(token, url):
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get(f"{API_URL}/web_get", params={"url": url}, headers=headers)
+    return response.json()
+
+# Streamlit UI
+st.title("Chatbot with HITL")
+
+if "token" not in st.session_state:
+    st.session_state.token = None
+
+if not st.session_state.token:
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        token = login(username, password)
+        if token:
+            st.session_state.token = token
+            st.success("Logged in!")
+        else:
+            st.error("Login failed")
+else:
+    query_text = st.text_input("Enter your query")
+    if st.button("Submit"):
+        result = query(st.session_state.token, query_text)
+        if result.get("status") == "paused":
+            st.write("Retrieved Docs:", result["retrieved_docs"])
+            user_input = st.text_input("Provide input to continue")
+            if st.button("Continue"):
+                result = query(st.session_state.token, query_text, user_input)
+                st.write("Response:", result["response"])
+                rating = st.slider("Rate this response (1-5)", 1, 5)
+                if st.button("Submit Feedback"):
+                    feedback(st.session_state.token, result["response"], rating)
+                    st.success("Feedback submitted!")
+        else:
+            st.write("Response:", result["response"])
+            rating = st.slider("Rate this response (1-5)", 1, 5)
+            if st.button("Submit Feedback"):
+                feedback(st.session_state.token, result["response"], rating)
+                st.success("Feedback submitted!")
+
+    # Web features
+    search_query = st.text_input("Web Search Query")
+    if st.button("Search Web"):
+        results = web_search(st.session_state.token, search_query)
+        st.write("Search Results:", results.get("organic_results", [])[:3])
+
+    url = st.text_input("Enter URL to fetch")
+    if st.button("Get Web Content"):
+        content = web_get(st.session_state.token, url)
+        st.write("Content:", content["content"])
+
