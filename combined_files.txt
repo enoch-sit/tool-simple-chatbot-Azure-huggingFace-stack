@@ -251,6 +251,10 @@ foreach ($dir in $directories) {
 }
 
 ===================================================
+FILE: C:\Users\user\Documents\ThankGodForJesusChrist\ThankGodForTools\tool-simple-chatbot-Azure-huggingFace-stack\README.md
+===================================================
+
+===================================================
 FILE: C:\Users\user\Documents\ThankGodForJesusChrist\ThankGodForTools\tool-simple-chatbot-Azure-huggingFace-stack\requirment.txt
 ===================================================
 aiohappyeyeballs==2.4.6
@@ -363,6 +367,7 @@ PINECONE_API_KEY=
 PINECONE_ENVIRONMENT=
 SERPAPI_API_KEY=
 SECRET_KEY=
+GROK_API_KEY=
 
 ===================================================
 FILE: C:\Users\user\Documents\ThankGodForJesusChrist\ThankGodForTools\tool-simple-chatbot-Azure-huggingFace-stack\chatbot_project\backend\database.py
@@ -489,11 +494,11 @@ load_dotenv()
 
 # Custom Grok LLM for LangChain
 class GrokLLM(LLM):
-    api_key: str
-    api_url: str = "https://api.x.ai/v1/chat/completions"  # Hypothetical endpoint; adjust based on xAI docs
+    api_key: Optional[str] = None
+    api_url: str = "https://api.x.ai/v1/chat/completions"
 
-    def __init__(self, api_key: str):
-        super().__init__()
+    def __init__(self, api_key: Optional[str] = None):
+        super().__init__(api_key=api_key)  # Pass parameters to super().__init__
         self.api_key = api_key
 
     def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
@@ -544,13 +549,18 @@ embeddings = HuggingFaceInferenceEmbeddings()
 
 # Initialize Pinecone
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-index_name = "chatbot-index"
+index_name = "rag"
 if index_name not in pc.list_indexes().names():
     pc.create_index(name=index_name, dimension=384, metric="cosine")  # 384 for MiniLM
 vector_store = PineconeVectorStore(index_name=index_name, embedding=embeddings)
 
 # Sample data for RAG
-documents = ["AI is advancing rapidly in 2025.", "Web search APIs are useful."]
+documents ={
+  "inputs": {
+    "source_sentence": "That is a happy person",
+    "sentences": ["That is a happy dog", "That is a very happy person", "Today is a sunny day"]
+  }
+}
 vector_store.add_texts(documents)
 
 # Define State for LangGraph
