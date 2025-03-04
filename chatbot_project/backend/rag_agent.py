@@ -7,7 +7,7 @@ from pinecone import Pinecone
 import requests
 import os
 from dotenv import load_dotenv
-import pdb; pdb.set_trace()
+#import pdb; pdb.set_trace()
 
 from transformers import AutoTokenizer, AutoModel
 import torch
@@ -61,16 +61,16 @@ def huggingface_inference_embeddings(texts):
     #         "sentences": texts
     #     }
     # }
-    breakpoint()
+    #breakpoint()
     response = requests.post(HF_API_URL, headers=headers, json=payload)
     if response.status_code != 200:
         raise Exception(f"HF API error: {response.text}")
-        breakpoint()
+        #breakpoint()
     embeddings = response.json()
-    breakpoint()
+    #breakpoint()
     if isinstance(embeddings, list) and len(embeddings) > 0 and isinstance(embeddings[0], list):
         return embeddings
-    breakpoint()
+    #breakpoint()
     raise Exception("Unexpected HF API response format")
 
 class HuggingFaceInferenceEmbeddings:
